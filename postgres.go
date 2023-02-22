@@ -6,15 +6,15 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
+	
+	"github.com/gozelle/gorm"
+	"github.com/gozelle/gorm/callbacks"
+	"github.com/gozelle/gorm/clause"
+	"github.com/gozelle/gorm/logger"
+	"github.com/gozelle/gorm/migrator"
+	"github.com/gozelle/gorm/schema"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
-	"gorm.io/gorm"
-	"gorm.io/gorm/callbacks"
-	"gorm.io/gorm/clause"
-	"gorm.io/gorm/logger"
-	"gorm.io/gorm/migrator"
-	"gorm.io/gorm/schema"
 )
 
 type Dialector struct {
@@ -52,14 +52,14 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 			DeleteClauses: []string{"DELETE", "FROM", "WHERE", "RETURNING"},
 		})
 	}
-
+	
 	if dialector.Conn != nil {
 		db.ConnPool = dialector.Conn
 	} else if dialector.DriverName != "" {
 		db.ConnPool, err = sql.Open(dialector.DriverName, dialector.Config.DSN)
 	} else {
 		var config *pgx.ConnConfig
-
+		
 		config, err = pgx.ParseConfig(dialector.Config.DSN)
 		if err != nil {
 			return
@@ -99,7 +99,7 @@ func (dialector Dialector) QuoteTo(writer clause.Writer, str string) {
 		continuousBacktick      int8
 		shiftDelimiter          int8
 	)
-
+	
 	for _, v := range []byte(str) {
 		switch v {
 		case '"':
@@ -125,16 +125,16 @@ func (dialector Dialector) QuoteTo(writer clause.Writer, str string) {
 					continuousBacktick -= 1
 				}
 			}
-
+			
 			for ; continuousBacktick > 0; continuousBacktick -= 1 {
 				writer.WriteString(`""`)
 			}
-
+			
 			writer.WriteByte(v)
 		}
 		shiftDelimiter++
 	}
-
+	
 	if continuousBacktick > 0 && !selfQuoted {
 		writer.WriteString(`""`)
 	}
@@ -202,7 +202,7 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 
 func (dialector Dialector) getSchemaCustomType(field *schema.Field) string {
 	sqlType := string(field.DataType)
-
+	
 	if field.AutoIncrement && !strings.Contains(strings.ToLower(sqlType), "serial") {
 		size := field.Size
 		if field.GORMDataType == schema.Uint {
@@ -217,7 +217,7 @@ func (dialector Dialector) getSchemaCustomType(field *schema.Field) string {
 			sqlType = "bigserial"
 		}
 	}
-
+	
 	return sqlType
 }
 
